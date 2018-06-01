@@ -107,11 +107,11 @@ func provideImage(w http.ResponseWriter, r *http.Request) {
 	aspectRatio := width / height
 
 	if aspectRatio > 1 {
-		height = float64(320)
-		width  = height * aspectRatio
-	} else {
 		width  = float64(320)
 		height = width / aspectRatio
+	} else {
+		height = float64(320)
+		width  = height * aspectRatio
 	}
 
 	err = mw.ResizeImage(uint(width), uint(height), imagick.FILTER_LANCZOS)
