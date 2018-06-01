@@ -89,27 +89,12 @@ func queryMessages(phone string) []Message {
 }
 
 // GET
-func provideImages(w http.ResponseWriter, r *http.Request) {
-	mw := imagick.NewMagickWand()
-	defer mw.Destroy()
-
-	query := r.URL.Query()
-	phone := query.Get("phone")
-
-	rows, err := db.Query(`SELECT * FROM messages WHERE phone = $1`, phone)
-	if (err != nil) {panic(err)}
-	defer rows.Close()
-
-
-}
-
-// GET
 func provideImage(w http.ResponseWriter, r *http.Request) {
 	mw := imagick.NewMagickWand()
 	defer mw.Destroy()
 
-	query  := r.URL.Query()
-	sid    := query.Get("sid")
+	query := r.URL.Query()
+	sid   := query.Get("sid")
 
 	var phone string
 	db.QueryRow(`SELECT phone FROM messages WHERE sid = $1`, sid).Scan(&phone)
@@ -117,10 +102,19 @@ func provideImage(w http.ResponseWriter, r *http.Request) {
 	err := mw.ReadImage(fmt.Sprintf("img/%s/%s.jpg", phone, sid))
 	if err != nil {panic(err)}
 
-	width  := uint(320)
-	height := uint(320)
+	width       := float64(mw.GetImageWidth())
+	height      := float64(mw.GetImageHeight())
+	aspectRatio := width / height
 
-	err = mw.ResizeImage(width, height, imagick.FILTER_LANCZOS)
+	if aspectRatio > 1 {
+		height = float64(320)
+		width  = height * aspectRatio
+	} else {
+		width  = float64(320)
+		height = width / aspectRatio
+	}
+
+	err = mw.ResizeImage(uint(width), uint(height), imagick.FILTER_LANCZOS)
 	if err != nil {panic(err)}
 	err = mw.SetImageCompressionQuality(95)
 	if err != nil {panic(err)}
@@ -142,9 +136,7 @@ func main() {
 	connStr := "user=postgres dbname=mother sslmode=disable"
 	var err error
 	db, err = sql.Open("postgres", connStr)
-	if err != nil {
-		log.Fatal(err)
-	}
+	if err != nil {panic(err)}
 	defer db.Close()
 
 	imagick.Initialize()
@@ -152,7 +144,6 @@ func main() {
 
 	http.HandleFunc("/sms", handleSms)
 	http.HandleFunc("/image", provideImage)
-	http.HandleFunc("/images", provideImages)
 	http.HandleFunc("/messages", provideMessages)
 	http.ListenAndServe(":8080", nil)
 }
