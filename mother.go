@@ -1,6 +1,6 @@
 package main
 
-import ( // postgres..
+import (
 	"database/sql"
 	_ "github.com/lib/pq"
 )
@@ -8,7 +8,6 @@ import ( // postgres..
 import (
 	"fmt"
 	"gopkg.in/gographics/imagick.v3/imagick"
-	_ "github.com/davecgh/go-spew/spew"
 	"io"
 	"encoding/json"
 	"log"
@@ -67,21 +66,15 @@ func handleSms(w http.ResponseWriter, r *http.Request) {
 func cacheImage(phone string, sid string, url string) error {
 	os.MkdirAll(fmt.Sprintf("img/%s", phone), os.ModePerm)
 	out, err := os.Create(fmt.Sprintf("img/%s/%s.jpg", phone, sid))
-	if (err != nil) {
-		return err
-	}
+	if (err != nil) {return err}
 	defer out.Close()
 
 	resp, err := http.Get(url)
-	if (err != nil) {
-		return err
-	}
+	if (err != nil) {return err}
 	defer resp.Body.Close()
 
 	_, err = io.Copy(out, resp.Body)
-	if (err != nil) {
-		return err
-	}
+	if (err != nil) {return err}
 
 	return nil
 }
@@ -97,11 +90,24 @@ func provideImage(w http.ResponseWriter, r *http.Request) {
 	mw := imagick.NewMagickWand()
 	defer mw.Destroy()
 
-	//query  := r.URL.Query()
-	//phone  := query.Get("phone")
-	//sid    := query.Get("sid")
-	//width  := query.Get("width")
-	//height := query.Get("height")
+	query  := r.URL.Query()
+	sid    := query.Get("sid")
+
+
+	var phone string
+	db.QueryRow(`SELECT phone FROM messages WHERE sid = $1`, sid).Scan(&phone)
+
+	err := mw.ReadImage(fmt.Sprintf("img/%s/%s.jpg", phone, sid))
+	if err != nil {panic(err)}
+
+	width  := uint(320)
+	height := uint(320)
+
+	err = mw.ResizeImage(width, height, imagick.FILTER_LANCZOS)
+	if err != nil {panic(err)}
+	err = mw.SetImageCompressionQuality(95)
+	if err != nil {panic(err)}
+	w.Write(mw.GetImageBlob())
 }
 
 // GET
@@ -122,16 +128,12 @@ func provideMessages(w http.ResponseWriter, r *http.Request) {
 	var messages []Message
 	for rows.Next() {
 		err := rows.Scan(&sid, &phone, &body, &url, &id)
-		if err != nil {
-			panic(err)
-		}
+		if err != nil {panic(err)}
 		messages = append(messages, Message{Sid: sid, Phone: phone, Body: body, Url: url, Id: id})
 	}
 
 	jData, err := json.Marshal(messages)
-	if err != nil {
-		panic(err)
-	}
+	if err != nil {panic(err)}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(jData)
 }
