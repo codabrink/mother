@@ -43,11 +43,11 @@ func handleSms(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	err  := r.ParseForm()
 	form := r.Form
-	if (err != nil) {panic(err)}
+	if err != nil {panic(err)}
 
 	smsSid      := form.Get("SmsSid")
 	phone       := form.Get("From")[1:]
-	//createUser(phone)
+	createUser(phone)
 	numMedia, _ := strconv.Atoi(form.Get("NumMedia"))
 	for i:= 0; i <= numMedia - 1; i++ {
 		url := form.Get(fmt.Sprintf("MediaUrl%d", i))
@@ -60,15 +60,15 @@ func handleSms(w http.ResponseWriter, r *http.Request) {
 func cacheImage(phone string, sid string, url string) error {
 	os.MkdirAll(fmt.Sprintf("img/%s", phone), os.ModePerm)
 	out, err := os.Create(fmt.Sprintf("img/%s/%s.jpg", phone, sid))
-	if (err != nil) {return err}
+	if err != nil {return err}
 	defer out.Close()
 
 	resp, err := http.Get(url)
-	if (err != nil) {return err}
+	if err != nil {return err}
 	defer resp.Body.Close()
 
 	_, err = io.Copy(out, resp.Body)
-	if (err != nil) {return err}
+	if err != nil {return err}
 
 	return nil
 }
@@ -116,7 +116,7 @@ func provideImage(w http.ResponseWriter, r *http.Request) {
 
 	err = mw.ResizeImage(uint(width), uint(height), imagick.FILTER_LANCZOS)
 	if err != nil {panic(err)}
-	err = mw.SetImageCompressionQuality(95)
+	err = mw.SetImageCompressionQuality(75)
 	if err != nil {panic(err)}
 	w.Write(mw.GetImageBlob())
 }
