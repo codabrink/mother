@@ -93,13 +93,15 @@ func provideImage(w http.ResponseWriter, r *http.Request) {
 	mw := imagick.NewMagickWand()
 	defer mw.Destroy()
 
-	query := r.URL.Query()
-	sid   := query.Get("sid")
+	query     := r.URL.Query()
+	sid       := query.Get("sid")
+	size, err := strconv.ParseFloat(query.Get("size"), 64)
+	if (err != nil) {size = float64(320)}
 
 	var phone string
 	db.QueryRow(`SELECT phone FROM messages WHERE sid = $1`, sid).Scan(&phone)
 
-	err := mw.ReadImage(fmt.Sprintf("img/%s/%s.jpg", phone, sid))
+	err = mw.ReadImage(fmt.Sprintf("img/%s/%s.jpg", phone, sid))
 	if err != nil {panic(err)}
 
 	width       := float64(mw.GetImageWidth())
@@ -107,10 +109,10 @@ func provideImage(w http.ResponseWriter, r *http.Request) {
 	aspectRatio := width / height
 
 	if aspectRatio > 1 {
-		width  = float64(320)
+		width  = size
 		height = width / aspectRatio
 	} else {
-		height = float64(320)
+		height = size
 		width  = height * aspectRatio
 	}
 
