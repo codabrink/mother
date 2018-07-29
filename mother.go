@@ -6,6 +6,7 @@ import (
 )
 
 import (
+	"bytes"
 	"fmt"
 	"gopkg.in/gographics/imagick.v3/imagick"
 	"io"
@@ -17,11 +18,12 @@ import (
 )
 
 type Message struct {
-	Id    int64  `json:"id,omitempty"`
-	Sid   string `json:"sid"`
-	Phone string `json:"phone"`
-	Body  string `json:"body"`
-	Url   string `json:"url"`
+	Id        int64  `json:"id,omitempty"`
+	Sid       string `json:"sid"`
+	Phone     string `json:"phone"`
+	Body      string `json:"body"`
+	Url       string `json:"url"`
+	TwilioUrl string `json:"twilio_url"`
 }
 
 var db *sql.DB
@@ -32,9 +34,14 @@ func createUser(phone string) {
 	_, err := db.Exec(sqlStatement, phone)
 	if err != nil {panic(err)}
 }
-func createMessage(phone string, sid string, body string, url string) {
-	sqlStatement := `INSERT INTO messages (phone, sid, body, url) VALUES ($1, $2, $3, $4)`
-	_, err := db.Exec(sqlStatement, phone, sid, body, url)
+func createMessage(phone string, sid string, body string, twilio_url string) {
+	sqlStatement := `INSERT INTO messages (phone, sid, body, url, twilio_url) VALUES ($1, $2, $3, $4)`
+
+	var url bytes.Buffer
+	url.WriteString("http://dakota.io/image?sid=")
+	url.WriteString(sid)
+
+	_, err := db.Exec(sqlStatement, phone, sid, body, url.String(), twilio_url)
 	if err != nil {panic(err)}
 }
 
